@@ -25,9 +25,10 @@ dev = [
 ]
 
 [tool.uv]
-# Always use a uv-managed CPython. Managed builds bundle tkinter on every
-# platform, so the GUI runs identically on Windows, Linux and macOS.
-python-preference = "only-managed"
+# Prefer a uv-managed CPython (its Tk bundles Windows/macOS font + SVG support),
+# but still allow an explicitly selected system interpreter — on Linux, the
+# system Tk (with Xft) is what renders the bundled Geist font. See README.
+python-preference = "managed"
 
 [tool.ruff]
 line-length = 88

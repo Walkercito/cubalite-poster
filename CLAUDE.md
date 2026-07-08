@@ -45,19 +45,28 @@ cubalite-poster/
 ├── src/cubalite_poster/
 │   ├── __init__.py          # exposes main()
 │   ├── __main__.py          # `python -m cubalite_poster`
-│   ├── app.py               # App: owns the root window + theme lifecycle
+│   ├── app.py               # App: owns root window, fonts + theme lifecycle
+│   ├── resources.py         # bundled-asset paths (fonts, ...)
 │   ├── config/
 │   │   ├── __init__.py
 │   │   └── constants.py     # every fixed value lives here (No Magic Values)
 │   ├── ui/
 │   │   ├── __init__.py
 │   │   ├── main_window.py   # the main view (a ttk.Frame)
-│   │   └── widgets/         # reusable custom widgets
+│   │   ├── fonts.py         # FontManager: register + apply the Geist font
+│   │   ├── theme.py         # ThemeController: light/dark state over sv-ttk
+│   │   ├── icons.py         # SVG icon sources + IconRenderer (Tk-native SVG)
+│   │   └── widgets/
+│   │       └── theme_toggle.py   # ThemeToggle: icon button that flips theme
 │   ├── core/                # poster-generation logic (no Tk imports here)
 │   │   └── __init__.py
 │   ├── models/              # plain data models (poster spec, etc.)
 │   │   └── __init__.py
-│   └── assets/              # fonts, logos, background templates
+│   └── assets/
+│       ├── fonts/           # bundled Geist TTFs + OFL licence
+│       └── icons/           # PNGs rasterised from the SVG sources
+├── scripts/
+│   └── render_icons.py      # regenerate assets/icons from the SVG sources
 ├── tests/
 ├── pyproject.toml
 ├── CLAUDE.md
@@ -67,6 +76,29 @@ cubalite-poster/
 **Key boundary:** `core/` and `models/` must never import Tkinter. The UI
 depends on the core, never the reverse — this keeps the poster engine testable
 and reusable (CLI, batch, server) independent of the GUI.
+
+### Fonts & theming
+
+- **Geist** (Vercel, OFL) is bundled in `assets/fonts` and registered with the
+  OS at start-up by `FontManager` — privately per-process via
+  `AddFontResourceExW` on Windows, or copied into the user font directory and
+  `fc-cache`-refreshed on Linux/fontconfig. `FontManager` retargets Tk's shared
+  named fonts so every widget inherits Geist (DRY), and falls back to a system
+  sans if the family cannot be resolved.
+- **Theme** is Sun-Valley (`sv-ttk`), light by default, switchable at runtime
+  via the Moon/Sun toggle in the top-right corner. `ThemeController` owns the
+  state and notifies observers; `IconRenderer` loads the per-theme icon.
+- **Icons** ship as PNGs pre-rasterised from the SVG sources
+  (`scripts/render_icons.py`), so they load on any Tk 8.6+ — the native SVG
+  photo format only exists in Tk 8.7+, which neither Ubuntu's system Tk nor
+  python.org on Windows provides. The SVG sources stay in `ui/icons.py` as the
+  design's source of truth; rerun the script after changing them or the icon
+  colour/size constants.
+- **Linux note:** Geist needs a Tk built with Xft/fontconfig. Distro Tk (8.6)
+  has it, but the uv-managed CPython's Tk does not on Linux, so Geist falls back
+  there. Run against the system interpreter (`python3-tk`) to get Geist — see
+  the README. On **Windows** — the primary target — the managed Tk renders
+  Geist via GDI with no extra setup.
 
 ## Principles
 
