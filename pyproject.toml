@@ -1,0 +1,43 @@
+[project]
+name = "cubalite-poster"
+version = "0.1.0"
+description = "Automatic poster image generator with a fixed news-channel design"
+readme = "README.md"
+authors = [
+    { name = "Walkercito", email = "yoanky2005@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "sv-ttk>=2.6.1",
+]
+
+[project.scripts]
+cubalite-poster = "cubalite_poster:main"
+
+[build-system]
+requires = ["uv_build>=0.11.19,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.20",
+    "ty>=0.0.57",
+]
+
+[tool.uv]
+# Always use a uv-managed CPython. Managed builds bundle tkinter on every
+# platform, so the GUI runs identically on Windows, Linux and macOS.
+python-preference = "only-managed"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ty.environment]
+python-version = "3.12"
