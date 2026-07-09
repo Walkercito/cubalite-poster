@@ -1,62 +1,54 @@
 """The main view of the application."""
 
-import tkinter as tk
-from tkinter import ttk
+import dearpygui.dearpygui as dpg
 
 from cubalite_poster.config import constants
 from cubalite_poster.ui.fonts import FontManager
-from cubalite_poster.ui.icons import IconRenderer
-from cubalite_poster.ui.theme import ThemeController
-from cubalite_poster.ui.widgets.theme_toggle import ThemeToggle
+from cubalite_poster.ui.theme import build_accent_theme
 
 
-class MainWindow(ttk.Frame):
-    """Root view: the theme toggle, a greeting and the accent action button.
+class MainWindow:
+    """Root view: greeting and accent action button.
 
     A view is responsible only for building and wiring its own widgets. It
     holds no poster-generation logic — that belongs in ``core``.
     """
 
-    def __init__(
-        self,
-        master: tk.Misc,
-        fonts: FontManager,
-        theme: ThemeController,
-        icons: IconRenderer,
-    ) -> None:
-        super().__init__(master)
+    def __init__(self, fonts: FontManager) -> None:
         self._fonts = fonts
-        self._theme = theme
-        self._icons = icons
-        self.pack(fill="both", expand=True)
         self._build()
 
     def _build(self) -> None:
-        toggle = ThemeToggle(self, self._theme, self._icons)
-        toggle.place(
-            relx=1.0,
-            x=-constants.CONTENT_PADDING,
-            y=constants.CONTENT_PADDING,
-            anchor="ne",
-        )
+        with dpg.window(
+            tag=constants.TAG_PRIMARY_WINDOW,
+            no_title_bar=True,
+            no_resize=True,
+            no_move=True,
+            no_collapse=True,
+            no_close=True,
+        ):
+            dpg.add_spacer(height=constants.CONTENT_TOP_SPACER)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=constants.CONTENT_LEFT_SPACER)
+                with dpg.group():
+                    dpg.add_text(
+                        constants.GREETING_TEXT,
+                        tag=constants.TAG_GREETING,
+                    )
+                    self._fonts.bind_heading(constants.TAG_GREETING)
 
-        content = ttk.Frame(self)
-        content.place(relx=0.5, rely=0.5, anchor="center")
+                    dpg.add_spacer(height=constants.WIDGET_SPACING)
 
-        greeting = ttk.Label(
-            content,
-            text=constants.GREETING_TEXT,
-            font=self._fonts.heading_font(),
-        )
-        touch_me = ttk.Button(
-            content,
-            text=constants.TOUCH_ME_BUTTON_TEXT,
-            style=constants.ACCENT_BUTTON_STYLE,
-            command=self._on_touch_me,
-        )
+                    dpg.add_button(
+                        label=constants.TOUCH_ME_BUTTON_TEXT,
+                        tag=constants.TAG_TOUCH_ME_BUTTON,
+                        callback=self._on_touch_me,
+                    )
+                    dpg.bind_item_theme(
+                        constants.TAG_TOUCH_ME_BUTTON,
+                        build_accent_theme(),
+                    )
 
-        greeting.pack(pady=(0, constants.WIDGET_SPACING))
-        touch_me.pack()
-
-    def _on_touch_me(self) -> None:
+    @staticmethod
+    def _on_touch_me(*_args: object) -> None:
         """Placeholder action for the accent button."""
