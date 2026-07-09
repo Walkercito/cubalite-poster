@@ -25,6 +25,10 @@ dev = [
     "ty>=0.0.57",
     "pytest>=8.0",
 ]
+# Windows packaging only — not required to run or test the app.
+packaging = [
+    "pyinstaller>=6.0",
+]
 
 [tool.uv]
 # Managed CPython is fine on every OS; DearPyGUI ships its own binaries.

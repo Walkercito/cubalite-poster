@@ -1,4 +1,6 @@
-"""Application shell: owns the DearPyGUI context, viewport and lifecycle."""
+"""Application shell: DearPyGUI context, worker thread, manual render loop."""
+
+from __future__ import annotations
 
 import dearpygui.dearpygui as dpg
 
@@ -6,11 +8,12 @@ from cubalite_poster import resources
 from cubalite_poster.config import constants
 from cubalite_poster.ui.fonts import FontManager
 from cubalite_poster.ui.main_window import MainWindow
+from cubalite_poster.ui.render_worker import RenderWorker
 from cubalite_poster.ui.theme import apply_dark_theme
 
 
 class App:
-    """Wires fonts, theme, main view and the viewport run loop."""
+    """Wires fonts, theme, editor view, background renderer, and frame loop."""
 
     def __init__(self) -> None:
         dpg.create_context()
@@ -18,7 +21,10 @@ class App:
         self._fonts = FontManager(resources.FONTS_DIR)
         self._fonts.load()
         apply_dark_theme()
-        MainWindow(self._fonts)
+
+        self._worker = RenderWorker()
+        self._worker.start()
+        self._window = MainWindow(self._worker, self._fonts)
 
         self._configure_viewport()
 
@@ -34,8 +40,14 @@ class App:
         dpg.set_primary_window(constants.TAG_PRIMARY_WINDOW, True)
 
     def run(self) -> None:
-        dpg.start_dearpygui()
-        dpg.destroy_context()
+        try:
+            while dpg.is_dearpygui_running():
+                self._window.poll_results()
+                dpg.render_dearpygui_frame()
+        finally:
+            self._window.shutdown()
+            self._worker.stop()
+            dpg.destroy_context()
 
 
 def main() -> None:

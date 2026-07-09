@@ -107,7 +107,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--text",
         default=constants.POSTER_HEADLINE_DEFAULT,
         metavar="HEADLINE",
-        help="Headline text. Default empty (-t='').",
+        help="Headline text. Default is the sample Lorem Ipsum line.",
     )
 
     advanced = parser.add_argument_group("advanced style options")

@@ -1,0 +1,83 @@
+# Build CubalitePoster for Windows and publish the zip.
+#
+# Triggers:
+#   - manual (Actions → Build Windows → Run workflow)
+#   - push to main
+#   - pull requests
+#   - version tags (v*) → also attaches the zip to a GitHub Release
+#
+# Download: Actions run → Artifacts → CubalitePoster-windows
+# Or on a tag release: Releases page → CubalitePoster.zip
+
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+# Cancel in-progress runs for the same branch/PR.
+concurrency:
+  group: build-windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --group dev --frozen
+
+      - name: Quality gate
+        run: |
+          uv run ruff check
+          uv run ty check
+          uv run pytest -q
+
+  windows-exe:
+    name: Windows exe
+    needs: test
+    runs-on: windows-latest
+    permissions:
+      contents: write # needed to attach zip on tag releases
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Build distribution
+        shell: pwsh
+        run: ./scripts/build_windows.ps1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CubalitePoster-windows
+          path: dist/CubalitePoster.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach zip to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/CubalitePoster.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

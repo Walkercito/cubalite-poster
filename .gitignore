@@ -8,6 +8,11 @@ __pycache__/
 # uv / virtualenv
 .venv/
 
+# PyInstaller / Windows packaging
+build/
+dist/
+*.spec.bak
+
 # OS
 .DS_Store
 Thumbs.db
