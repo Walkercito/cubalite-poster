@@ -57,6 +57,12 @@ def apply_dark_theme() -> int | str:
             category=dpg.mvThemeCat_Core,
         )
         dpg.add_theme_style(
+            dpg.mvStyleVar_FramePadding,
+            constants.FRAME_PADDING_X,
+            constants.FRAME_PADDING_Y,
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_style(
             dpg.mvStyleVar_WindowBorderSize,
             constants.WINDOW_BORDER_SIZE,
             category=dpg.mvThemeCat_Core,
@@ -102,6 +108,17 @@ def build_accent_theme() -> int | str:
         dpg.add_theme_color(
             dpg.mvThemeCol_Text,
             constants.COLOR_ACCENT_TEXT,
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_FrameRounding,
+            constants.FRAME_ROUNDING,
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_FramePadding,
+            constants.FRAME_PADDING_X,
+            constants.FRAME_PADDING_Y,
             category=dpg.mvThemeCat_Core,
         )
     return theme_id
