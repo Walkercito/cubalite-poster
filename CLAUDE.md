@@ -15,7 +15,7 @@ The goal is speed and consistency: no manual design work, no off-brand posters.
 - **Language:** Python 3.12+
 - **GUI:** [DearPyGUI](https://dearpygui.readthedocs.io/en/latest/)
 - **Package manager:** [`uv`](https://docs.astral.sh/uv/) — pinned to a
-  uv-managed CPython (`python-preference = "only-managed"`). DearPyGUI ships
+  uv-managed CPython (`python-preference = "managed"`). DearPyGUI ships
   platform binaries, so no Tk/Xft workarounds are needed.
 - **Type checker:** [`ty`](https://github.com/astral-sh/ty) — `uv run ty check`
 - **Formatter / linter:** [`ruff`](https://docs.astral.sh/ruff/) —
