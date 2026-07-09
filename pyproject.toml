@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "sv-ttk>=2.6.1",
+    "dearpygui>=2.0",
 ]
 
 [project.scripts]
@@ -22,12 +22,11 @@ build-backend = "uv_build"
 dev = [
     "ruff>=0.15.20",
     "ty>=0.0.57",
+    "pytest>=8.0",
 ]
 
 [tool.uv]
-# Prefer a uv-managed CPython (its Tk bundles Windows/macOS font + SVG support),
-# but still allow an explicitly selected system interpreter — on Linux, the
-# system Tk (with Xft) is what renders the bundled Geist font. See README.
+# Managed CPython is fine on every OS; DearPyGUI ships its own binaries.
 python-preference = "managed"
 
 [tool.ruff]
