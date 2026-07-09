@@ -1,13 +1,12 @@
-# Build CubalitePoster for Windows and publish the zip.
+# Build CubalitePoster for Windows and publish to GitHub Releases.
 #
 # Triggers:
-#   - manual (Actions → Build Windows → Run workflow)
-#   - push to main
-#   - pull requests
-#   - version tags (v*) → also attaches the zip to a GitHub Release
+#   - push to main     → updates the "latest" pre-release (+ workflow artifact)
+#   - tag v*           → creates a versioned release with the zip
+#   - pull request     → test + build artifact only (no release)
+#   - workflow_dispatch → same as main when run on main
 #
-# Download: Actions run → Artifacts → CubalitePoster-windows
-# Or on a tag release: Releases page → CubalitePoster.zip
+# Download: repo → Releases → Latest build  (or a v* release)
 
 name: Build Windows
 
@@ -18,7 +17,6 @@ on:
     tags: ["v*"]
   pull_request:
 
-# Cancel in-progress runs for the same branch/PR.
 concurrency:
   group: build-windows-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -50,7 +48,7 @@ jobs:
     needs: test
     runs-on: windows-latest
     permissions:
-      contents: write # needed to attach zip on tag releases
+      contents: write
 
     steps:
       - name: Checkout
@@ -65,7 +63,7 @@ jobs:
         shell: pwsh
         run: ./scripts/build_windows.ps1
 
-      - name: Upload artifact
+      - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: CubalitePoster-windows
@@ -73,11 +71,37 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Attach zip to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+      # Versioned release: git tag v0.1.0 && git push origin v0.1.0
+      - name: Publish versioned GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/CubalitePoster.zip
           generate_release_notes: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Continuous build on main — always available under Releases → "Latest build"
+      - name: Publish latest pre-release
+        if: >
+          github.event_name != 'pull_request' &&
+          (github.ref == 'refs/heads/main' ||
+           (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          prerelease: true
+          make_latest: false
+          files: dist/CubalitePoster.zip
+          fail_on_unmatched_files: true
+          body: |
+            Continuous Windows build from `main`.
+
+            Unzip and run `CubalitePoster\CubalitePoster.exe`.
+            Ship the whole folder, not only the `.exe`.
+
+            Commit: ${{ github.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

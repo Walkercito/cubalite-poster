@@ -40,17 +40,15 @@ A real Windows runner builds the zip for you — no local Windows machine requir
 
 | Trigger | What happens |
 |---------|----------------|
-| Push to `main` / pull request | Tests + Windows build; zip as workflow artifact |
+| Push to `main` | Tests + Windows build → **Releases → “Latest build”** (pre-release) |
+| Pull request | Tests + build artifact only (no release) |
 | Manual | **Actions → Build Windows → Run workflow** |
-| Tag `v*` (e.g. `v0.1.0`) | Same build + zip attached to a **GitHub Release** |
+| Tag `v*` (e.g. `v0.1.0`) | Versioned **GitHub Release** with the zip |
 
-After a run finishes:
+**Download (easiest):** repo → [Releases](../../releases) → *Latest build* → `CubalitePoster.zip`  
+Unzip and run `CubalitePoster\CubalitePoster.exe` (whole folder).
 
-1. Open the workflow run on GitHub  
-2. **Artifacts → `CubalitePoster-windows`** → download the zip  
-3. Unzip and run `CubalitePoster/CubalitePoster.exe`
-
-To publish a release from your machine:
+Versioned release:
 
 ```bash
 git tag v0.1.0
