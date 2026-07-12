@@ -162,7 +162,10 @@ class PosterGenerator:
         fill = (*style.headline_color, 255)
         x = style.headline_x
         for line in lines:
-            if y + line_h > bottom_limit:
+            # Draw while the line's *top* is inside the box. Guarding the
+            # bottom (y + line_h) made a single line taller than the box vanish
+            # entirely; a slight overflow into the bottom pad beats disappearing.
+            if y >= bottom_limit:
                 break
             draw.text((x, y), line, font=font, fill=fill)
             y += line_h

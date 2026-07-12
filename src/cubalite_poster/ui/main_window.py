@@ -62,6 +62,11 @@ class MainWindow:
             return
         self._apply_result(result)
 
+    def show_update_ready(self) -> None:
+        """Reveal the 'update ready, applies on restart' notice (idempotent)."""
+        if dpg.does_item_exist(constants.TAG_UPDATE_NOTICE):
+            dpg.configure_item(constants.TAG_UPDATE_NOTICE, show=True)
+
     def shutdown(self) -> None:
         with self._debounce_lock:
             if self._debounce_timer is not None:
@@ -131,6 +136,13 @@ class MainWindow:
                         constants.LABEL_STATUS_READY,
                         tag=constants.TAG_STATUS_TEXT,
                     )
+                    notice = dpg.add_text(
+                        constants.LABEL_UPDATE_READY,
+                        tag=constants.TAG_UPDATE_NOTICE,
+                        color=constants.COLOR_UPDATE_READY,
+                        show=False,
+                    )
+                    self._fonts.bind_caption(notice)
 
     def _center_preview(self) -> None:
         """Keep the preview block centered as the window resizes."""
@@ -523,6 +535,22 @@ class MainWindow:
                 (*style.gradient_rgb, 255),
                 channels=True,
             )
+            dpg.add_spacer(height=constants.FIELD_GAP)
+            self._slider_field(
+                constants.LABEL_GRADIENT_DARKEN_TEXT,
+                constants.TAG_ADV_GRADIENT_DARKEN_TEXT,
+                default=constants.GRADIENT_DARKEN_PCT_MIN,
+                min_value=constants.GRADIENT_DARKEN_PCT_MIN,
+                max_value=constants.GRADIENT_DARKEN_PCT_MAX,
+            )
+            dpg.add_spacer(height=constants.FIELD_GAP)
+            self._slider_field(
+                constants.LABEL_GRADIENT_DARKEN_ALL,
+                constants.TAG_ADV_GRADIENT_DARKEN_ALL,
+                default=constants.GRADIENT_DARKEN_PCT_MIN,
+                min_value=constants.GRADIENT_DARKEN_PCT_MIN,
+                max_value=constants.GRADIENT_DARKEN_PCT_MAX,
+            )
 
             dpg.add_spacer(height=constants.FIELD_GAP)
             self._field_label(constants.LABEL_ADV_HEADLINE_STYLE)
@@ -538,15 +566,17 @@ class MainWindow:
                 constants.TAG_ADV_HEADLINE_SIZE,
                 default=style.headline_font_size,
                 min_value=style.headline_min_font_size,
-                max_value=72,
+                max_value=constants.POSTER_HEADLINE_FONT_SIZE_MAX,
             )
+            dpg.add_spacer(height=constants.TIGHT_GAP)
+            self._subtitle(constants.LABEL_HEADLINE_SIZE_HINT)
             dpg.add_spacer(height=constants.FIELD_GAP)
             self._slider_field(
                 constants.LABEL_HEADLINE_MAX_LINES,
                 constants.TAG_ADV_HEADLINE_MAX_LINES,
                 default=style.headline_max_lines,
-                min_value=1,
-                max_value=6,
+                min_value=constants.POSTER_HEADLINE_MAX_LINES_MIN,
+                max_value=constants.POSTER_HEADLINE_MAX_LINES_MAX,
             )
             dpg.add_spacer(height=constants.FIELD_GAP)
             self._slider_field(
@@ -554,7 +584,7 @@ class MainWindow:
                 constants.TAG_ADV_PADDING_BOTTOM,
                 default=style.content_padding_bottom,
                 min_value=0,
-                max_value=300,
+                max_value=constants.POSTER_CONTENT_PADDING_BOTTOM_MAX,
             )
             dpg.add_spacer(height=constants.FIELD_GAP)
             dpg.add_checkbox(
@@ -633,6 +663,8 @@ class MainWindow:
         else:
             self._draft.image_path = None
 
+        darken_text = int(dpg.get_value(constants.TAG_ADV_GRADIENT_DARKEN_TEXT))
+        darken_all = int(dpg.get_value(constants.TAG_ADV_GRADIENT_DARKEN_ALL))
         self._draft.style = replace(
             self._draft.style,
             badge_fill=_dpg_color_to_rgb(
@@ -643,6 +675,18 @@ class MainWindow:
             ),
             gradient_rgb=_dpg_color_to_rgb(
                 dpg.get_value(constants.TAG_ADV_GRADIENT_COLOR)
+            ),
+            # "Oscurecer bajo el texto": pull the ramp end onto the canvas.
+            gradient_end_y=_lerp(
+                constants.POSTER_GRADIENT_END_Y,
+                constants.POSTER_GRADIENT_END_Y_STRONG,
+                darken_text / constants.GRADIENT_DARKEN_PCT_MAX,
+            ),
+            # "Oscurecer toda la imagen": raise the scrim's opacity floor.
+            gradient_alpha_start=round(
+                darken_all
+                / constants.GRADIENT_DARKEN_PCT_MAX
+                * constants.COLOR_CHANNEL_MAX
             ),
             headline_color=_dpg_color_to_rgb(
                 dpg.get_value(constants.TAG_ADV_HEADLINE_COLOR)
@@ -698,6 +742,11 @@ class MainWindow:
     def _set_status(self, message: str) -> None:
         if dpg.does_item_exist(constants.TAG_STATUS_TEXT):
             dpg.set_value(constants.TAG_STATUS_TEXT, message)
+
+
+def _lerp(a: float, b: float, t: float) -> float:
+    """Linear interpolation from ``a`` (t=0) to ``b`` (t=1)."""
+    return a + (b - a) * t
 
 
 def _dpg_color_to_rgb(value: object) -> Rgb:

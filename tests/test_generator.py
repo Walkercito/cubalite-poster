@@ -1,5 +1,6 @@
 """PosterGenerator composites image fill + scrim + badge + headline."""
 
+from dataclasses import replace
 from pathlib import Path
 
 from PIL import Image
@@ -7,6 +8,7 @@ from PIL import Image
 from cubalite_poster.config import constants
 from cubalite_poster.core import PosterGenerator, parse_hex_color
 from cubalite_poster.core.generator import _gradient_alpha
+from cubalite_poster.models import PosterStyle
 
 
 def _rgb(image: Image.Image, xy: tuple[int, int]) -> tuple[int, int, int]:
@@ -129,12 +131,9 @@ def test_headline_fits_full_sample_in_two_lines() -> None:
 def test_headline_stays_within_max_height_box() -> None:
     long = "word " * 200
     image = PosterGenerator(fill_color=(0, 0, 0), headline=long).render()
-    top = (
-        constants.POSTER_BADGE_Y
-        + constants.POSTER_BADGE_HEIGHT
-        + constants.POSTER_CONTENT_ITEM_SPACING
-    )
-    below_box_y = top + constants.POSTER_HEADLINE_MAX_HEIGHT + 2
+    # Probe just below the *actual* box (bottom_limit), not the raw height cap:
+    # bottom_limit is padding-limited, so the cap alone would over-estimate it.
+    below_box_y = PosterStyle().headline_bottom_limit + 2
     for x in range(
         constants.POSTER_HEADLINE_X,
         constants.POSTER_HEADLINE_X + constants.POSTER_HEADLINE_WIDTH,
@@ -142,6 +141,30 @@ def test_headline_stays_within_max_height_box() -> None:
     ):
         r, g, b = _rgb(image, (x, below_box_y))
         assert r < 80 and g < 80 and b < 80
+
+
+def test_large_headline_without_autofit_still_renders() -> None:
+    """Regression: with auto-fit OFF and a font taller than the box, the first
+    line used to vanish entirely (the draw loop broke on the bottom edge)."""
+    style = replace(
+        PosterStyle(),
+        headline_font_size=constants.POSTER_HEADLINE_FONT_SIZE_MAX,
+        headline_auto_fit=False,
+    )
+    image = PosterGenerator(
+        fill_color=(0, 0, 0), headline="Titular", style=style
+    ).render()
+    whites = 0
+    for x in range(
+        constants.POSTER_HEADLINE_X,
+        constants.POSTER_HEADLINE_X + constants.POSTER_HEADLINE_WIDTH,
+        8,
+    ):
+        for y in range(style.headline_top, style.headline_bottom_limit, 8):
+            r, g, b = _rgb(image, (x, y))
+            if r > 200 and g > 200 and b > 200:
+                whites += 1
+    assert whites > 0
 
 
 def test_gradient_alpha_curve_matches_figma_stops() -> None:

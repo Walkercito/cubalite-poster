@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_dynamic_libs
+from PyInstaller.utils.hooks import collect_dynamic_libs, copy_metadata
 
 ROOT = Path(SPECPATH).resolve().parent
 SRC = ROOT / "src"
@@ -35,6 +35,10 @@ datas = [
     for name in FONT_FILES
     if (FONTS / name).is_file()
 ]
+
+# Bundle the package dist-info so importlib.metadata.version("cubalite-poster")
+# works in the frozen build — the auto-updater reads it to know its own version.
+datas += copy_metadata("cubalite-poster")
 
 # DearPyGUI ships a platform .pyd / shared lib that must travel with the app.
 binaries = collect_dynamic_libs("dearpygui")

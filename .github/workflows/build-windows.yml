@@ -43,6 +43,19 @@ jobs:
           uv run ty check
           uv run pytest -q
 
+      # A tagged release must match pyproject — the frozen app reports the
+      # pyproject version, so a mismatch would confuse the auto-updater.
+      - name: Verify tag matches pyproject version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION=$(grep -m1 -E '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          if [ "v$VERSION" != "$TAG_NAME" ]; then
+            echo "Tag $TAG_NAME != pyproject v$VERSION"
+            exit 1
+          fi
+
   windows-exe:
     name: Windows exe
     needs: test
@@ -76,7 +89,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/CubalitePoster.zip
+          files: |
+            dist/CubalitePoster.zip
+            dist/CubalitePoster.zip.sha256
           generate_release_notes: true
           fail_on_unmatched_files: true
         env:
@@ -94,7 +109,9 @@ jobs:
           name: Latest build
           prerelease: true
           make_latest: false
-          files: dist/CubalitePoster.zip
+          files: |
+            dist/CubalitePoster.zip
+            dist/CubalitePoster.zip.sha256
           fail_on_unmatched_files: true
           body: |
             Continuous Windows build from `main`.

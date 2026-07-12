@@ -36,6 +36,10 @@ POSTER_CONTENT_PADDING_LEFT: Final[int] = 45
 POSTER_CONTENT_PADDING_RIGHT: Final[int] = 243
 POSTER_CONTENT_PADDING_BOTTOM: Final[int] = 107
 POSTER_CONTENT_ITEM_SPACING: Final[int] = 10
+# Cap the operator's bottom-margin slider below the point where the headline
+# box collapses. The box starts at headline_top (≈671); past ~193 the padded
+# bottom (864 − margin) rises above the top and the headline vanishes silently.
+POSTER_CONTENT_PADDING_BOTTOM_MAX: Final[int] = 150
 
 # Layer 2 — bottom scrim (GRADIENT_LINEAR on Post).
 # Vertical black fade for headline legibility. Transparent through mid-frame,
@@ -45,6 +49,10 @@ POSTER_GRADIENT_START_Y: Final[float] = 0.5
 POSTER_GRADIENT_END_Y: Final[float] = 1.202
 POSTER_GRADIENT_ALPHA_START: Final[int] = 0
 POSTER_GRADIENT_ALPHA_END: Final[int] = 255
+# "Darken behind text" at 100%: pull the black ramp's end fully onto the canvas
+# so the headline band reaches near-full opacity. At 0% the operator slider maps
+# back to POSTER_GRADIENT_END_Y (the Figma default), leaving the render untouched.
+POSTER_GRADIENT_END_Y_STRONG: Final[float] = 0.82
 
 # Layer 3 — Cubalite brand badge (child frame "Cubalite", node 4:11).
 # Drawn *above* photo + scrim so the light fill stays fully visible.
@@ -68,12 +76,20 @@ POSTER_HEADLINE_X: Final[int] = POSTER_CONTENT_PADDING_LEFT
 POSTER_HEADLINE_WIDTH: Final[int] = (
     POSTER_WIDTH - POSTER_CONTENT_PADDING_LEFT - POSTER_CONTENT_PADDING_RIGHT
 )
-# Figma Noticia node height — room for two 40px lines of Libre Baskerville.
-POSTER_HEADLINE_MAX_HEIGHT: Final[int] = 100
+# Headline box height cap. Above the Figma node's ~100px so operators can grow
+# the headline (up to 3 comfortable lines) by lowering the bottom margin. The
+# default render is unchanged: bottom_limit stays padding-limited until the
+# margin drops, and the canvas caps the usable box near 193px regardless.
+POSTER_HEADLINE_MAX_HEIGHT: Final[int] = 160
 POSTER_HEADLINE_MAX_LINES: Final[int] = 2
+# Bounds for the operator's "Líneas máximas" slider.
+POSTER_HEADLINE_MAX_LINES_MIN: Final[int] = 1
+POSTER_HEADLINE_MAX_LINES_MAX: Final[int] = 6
 POSTER_HEADLINE_FONT_FILE: Final[str] = "LibreBaskerville-Bold.ttf"
 POSTER_HEADLINE_FONT_SIZE: Final[int] = 40
 POSTER_HEADLINE_MIN_FONT_SIZE: Final[int] = 18
+# Upper bound for the "Tamaño" slider (a headline of this size is one big line).
+POSTER_HEADLINE_FONT_SIZE_MAX: Final[int] = 72
 # When True, shrink headline size so text fits within max_lines × box height.
 POSTER_HEADLINE_AUTO_FIT: Final[bool] = True
 POSTER_HEADLINE_COLOR: Final[tuple[int, int, int]] = (255, 255, 255)
@@ -94,6 +110,52 @@ WINDOW_TITLE: Final[str] = "Cubalite Poster"
 WINDOW_WIDTH: Final[int] = 1120
 WINDOW_HEIGHT: Final[int] = 720
 WINDOW_RESIZABLE: Final[bool] = True
+
+# --- Auto-update (Windows, frozen builds only) -----------------------------
+# Package name for importlib.metadata.version() — matches [project].name.
+UPDATE_PACKAGE_NAME: Final[str] = "cubalite-poster"
+# GitHub repo that publishes the releases (public → unauthenticated API).
+UPDATE_REPO_OWNER: Final[str] = "Walkercito"
+UPDATE_REPO_NAME: Final[str] = "cubalite-poster"
+# /releases/latest excludes pre-releases, so this returns the newest v* tag
+# and ignores the rolling "latest" continuous build automatically.
+UPDATE_API_LATEST_URL: Final[str] = (
+    f"https://api.github.com/repos/{UPDATE_REPO_OWNER}/{UPDATE_REPO_NAME}"
+    "/releases/latest"
+)
+UPDATE_API_ACCEPT: Final[str] = "application/vnd.github+json"
+UPDATE_USER_AGENT: Final[str] = "CubalitePoster-Updater"
+# Release assets (pinned names — the build produces exactly these).
+UPDATE_ASSET_NAME: Final[str] = "CubalitePoster.zip"
+UPDATE_SHA256_ASSET_NAME: Final[str] = "CubalitePoster.zip.sha256"
+# Network guards. urllib defaults to *no* timeout — a hung Wi-Fi would
+# otherwise block the check thread forever.
+UPDATE_HTTP_TIMEOUT_S: Final[float] = 5.0
+UPDATE_DOWNLOAD_TIMEOUT_S: Final[float] = 120.0
+UPDATE_MAX_DOWNLOAD_BYTES: Final[int] = 300 * 1024 * 1024  # 300 MB safety cap
+# On-disk layout. Staging/backup/extract are siblings of the install folder on
+# the same volume, so swaps are metadata-only renames. Names are the install
+# folder's own name + these suffixes, so a renamed folder still works.
+UPDATE_EXE_NAME: Final[str] = "CubalitePoster.exe"
+UPDATE_STAGING_SUFFIX: Final[str] = ".new"
+# Sidecar next to the staged folder holding the release tag, so the exit-time
+# swapper knows which tag to skip if the new build fails its self-check.
+UPDATE_STAGING_TAG_SUFFIX: Final[str] = ".new.tag"
+UPDATE_EXTRACT_SUFFIX: Final[str] = ".extract.tmp"
+UPDATE_BACKUP_SUFFIX: Final[str] = ".old"
+# A rejected build is renamed here (never deleted in place) before rollback.
+UPDATE_FAILED_SUFFIX: Final[str] = ".failed"
+# App state (skip-version breadcrumbs) lives under %LOCALAPPDATA%, never in the
+# install dir (the swap would delete it).
+UPDATE_STATE_DIR_NAME: Final[str] = "CubalitePoster"
+UPDATE_SKIP_FILE_NAME: Final[str] = "skip-versions.txt"
+UPDATE_SWAPPER_SCRIPT_NAME: Final[str] = "cubalite_apply_update.cmd"
+# Hidden CLI modes on the frozen exe.
+UPDATE_SELFCHECK_FLAG: Final[str] = "--selfcheck"
+# Seconds the swapper waits (with backoff) for locks/PID before giving up, and
+# for the post-swap self-check to prove the new build launches.
+UPDATE_SWAP_WAIT_SECONDS: Final[int] = 30
+UPDATE_SELFCHECK_TIMEOUT_S: Final[int] = 30
 
 # --- Layout (editor) -------------------------------------------------------
 # Tight rhythm so Title sits close to its subtitle and control.
@@ -157,14 +219,26 @@ LABEL_STATUS_NOTHING_TO_EXPORT: Final[str] = (
 LABEL_STATUS_SAVED: Final[str] = "Guardado {name}"
 LABEL_STATUS_EXPORT_FAILED: Final[str] = "Error al exportar: {error}"
 LABEL_STATUS_ERROR: Final[str] = "Error: {error}"
+# Shown once the next version has finished downloading in the background.
+LABEL_UPDATE_READY: Final[str] = "✓ Actualización lista — se aplicará al reiniciar"
+COLOR_UPDATE_READY: Final[tuple[int, int, int, int]] = (120, 200, 120, 255)
 LABEL_ADV_WORDMARK: Final[str] = "Logotipo"
 LABEL_ADV_GRADIENT: Final[str] = "Degradado"
 LABEL_ADV_HEADLINE_STYLE: Final[str] = "Estilo del titular"
 LABEL_WORDMARK_FILL: Final[str] = "Relleno"
 LABEL_WORDMARK_STROKE: Final[str] = "Borde"
 LABEL_GRADIENT_COLOR: Final[str] = "Color"
+# Gradient darkness controls (percent sliders; 0 % = unchanged Figma default).
+LABEL_GRADIENT_DARKEN_TEXT: Final[str] = "Oscurecer bajo el texto"
+LABEL_GRADIENT_DARKEN_ALL: Final[str] = "Oscurecer toda la imagen"
+GRADIENT_DARKEN_PCT_MIN: Final[int] = 0
+GRADIENT_DARKEN_PCT_MAX: Final[int] = 100
 LABEL_HEADLINE_COLOR: Final[str] = "Color"
 LABEL_HEADLINE_SIZE: Final[str] = "Tamaño"
+LABEL_HEADLINE_SIZE_HINT: Final[str] = (
+    "Con «Ajustar texto al espacio» activo, el tamaño es un máximo; "
+    "baja el «Margen inferior» para agrandar."
+)
 LABEL_HEADLINE_MAX_LINES: Final[str] = "Líneas máximas"
 LABEL_PADDING_BOTTOM: Final[str] = "Margen inferior"
 LABEL_AUTO_FIT: Final[str] = "Ajustar texto al espacio"
@@ -212,9 +286,12 @@ TAG_CHOOSE_PHOTO_BUTTON: Final[str] = "choose_photo_button"
 TAG_ADVANCED_HEADER: Final[str] = "advanced_header"
 TAG_EXPORT_BUTTON: Final[str] = "export_button"
 TAG_STATUS_TEXT: Final[str] = "status_text"
+TAG_UPDATE_NOTICE: Final[str] = "update_notice"
 TAG_ADV_WORDMARK_FILL: Final[str] = "adv_wordmark_fill"
 TAG_ADV_WORDMARK_STROKE: Final[str] = "adv_wordmark_stroke"
 TAG_ADV_GRADIENT_COLOR: Final[str] = "adv_gradient_color"
+TAG_ADV_GRADIENT_DARKEN_TEXT: Final[str] = "adv_gradient_darken_text"
+TAG_ADV_GRADIENT_DARKEN_ALL: Final[str] = "adv_gradient_darken_all"
 TAG_ADV_HEADLINE_COLOR: Final[str] = "adv_headline_color"
 TAG_ADV_HEADLINE_SIZE: Final[str] = "adv_headline_size"
 TAG_ADV_HEADLINE_MAX_LINES: Final[str] = "adv_headline_max_lines"
